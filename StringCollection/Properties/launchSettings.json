@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "StringCollection": {
+      "commandName": "Project",
+      "commandLineArgs": "1"
+    }
+  }
+}
