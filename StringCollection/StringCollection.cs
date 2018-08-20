@@ -7,7 +7,11 @@ namespace StringCollection
 {
     public class StringCollection : IStringCollection
     {
-        ReaderWriterLockSlim stringLock = new ReaderWriterLockSlim();
+        private int _isWriteLocked = 0;
+        private int _isReadLocked = 0;
+
+        private const int Locked = 1;
+        private const int NotLocked = 0;
 
         private List<string> _stringList = new List<string>();
 
@@ -22,17 +26,15 @@ namespace StringCollection
 
         public void AddString(string s)
         {
-            if (_threadSafe)
-                stringLock.EnterWriteLock();
-
             try
             {
+                TryLock(ref _isWriteLocked, NotLocked, Locked);
+
                 _stringList.Add(s);
             }
             finally
             {
-                if (_threadSafe)
-                    stringLock.ExitWriteLock();
+                TryLock(ref _isWriteLocked, Locked, NotLocked);
             }
         }
 
@@ -40,20 +42,32 @@ namespace StringCollection
         {
             string result = string.Empty;
 
-            if (_threadSafe)
-                stringLock.EnterReadLock();
-
             try
             {
+                TryLock(ref _isReadLocked, NotLocked, Locked);
+
                 _stringList.ForEach((s) => result += s + ",");
             }
             finally
             {
-                if (_threadSafe)
-                    stringLock.ExitReadLock();
+                TryLock(ref _isReadLocked, Locked, NotLocked);
             }
 
-            return result.Substring(0, result.Length - 1);
+            return result.Substring(0, result.Length > 1 ? result.Length - 1 : result.Length);
+        }
+
+        private void TryLock(ref int isLockedValue, int currentLockState, int desiredLockState)
+        {
+            bool desiredLockStateAchieved = false;
+
+            if (_threadSafe)
+            {
+                do
+                {
+                    desiredLockStateAchieved = Interlocked.CompareExchange(ref isLockedValue, desiredLockState, currentLockState) == desiredLockState;
+                }
+                while (desiredLockStateAchieved);
+            }
         }
     }
 }
