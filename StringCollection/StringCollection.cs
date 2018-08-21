@@ -5,21 +5,22 @@ using System.Threading;
 
 namespace StringCollection
 {
+    /// <summary>
+    /// The lock access uses Interlocked to protect the lock flag and control access to the
+    /// read write operations. This avoids the latency when waking up threads in the situation
+    /// where we use a lock.
+    /// </summary>
     public class StringCollection : IStringCollection
     {
-        private int _isWriteLocked = 0;
-        private int _isReadLocked = 0;
+        private int _isLocked = 0;
 
         private const int Locked = 1;
         private const int NotLocked = 0;
 
         private List<string> _stringList = new List<string>();
 
-        private bool _threadSafe = false;
-
-        public StringCollection(bool threadSafe = true)
+        public StringCollection()
         {
-            _threadSafe = threadSafe;
         }
 
         public int NumberOfWords { get { return _stringList.Count; } }
@@ -28,13 +29,13 @@ namespace StringCollection
         {
             try
             {
-                TryLock(ref _isWriteLocked, NotLocked, Locked);
+                TryLock(NotLocked, Locked);
 
                 _stringList.Add(s);
             }
             finally
             {
-                TryLock(ref _isWriteLocked, Locked, NotLocked);
+                TryLock(Locked, NotLocked);
             }
         }
 
@@ -44,29 +45,27 @@ namespace StringCollection
 
             try
             {
-                TryLock(ref _isReadLocked, NotLocked, Locked);
+                TryLock(NotLocked, Locked);
 
-                _stringList.ForEach((s) => result += s + ",");
+                foreach (string s in _stringList)
+                    result += s + ",";
             }
             finally
             {
-                TryLock(ref _isReadLocked, Locked, NotLocked);
+                TryLock(Locked, NotLocked);
             }
 
             return result.Substring(0, result.Length > 1 ? result.Length - 1 : result.Length);
         }
 
-        private void TryLock(ref int isLockedValue, int currentLockState, int desiredLockState)
+        private void TryLock(int currentLockState, int desiredLockState)
         {
-            bool desiredLockStateAchieved = false;
+            int originalLockState = Interlocked.CompareExchange(ref _isLocked, desiredLockState, currentLockState);
 
-            if (_threadSafe)
+            // State has not changed
+            while (originalLockState == _isLocked)
             {
-                do
-                {
-                    desiredLockStateAchieved = Interlocked.CompareExchange(ref isLockedValue, desiredLockState, currentLockState) == desiredLockState;
-                }
-                while (desiredLockStateAchieved);
+                originalLockState = Interlocked.CompareExchange(ref _isLocked, desiredLockState, currentLockState);
             }
         }
     }
