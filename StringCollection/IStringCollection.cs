@@ -6,6 +6,7 @@ namespace StringCollection
 {
     public interface IStringCollection
     {
+        int NumberOfWords { get; }
         void AddString(string s);
         string ToString();
     }
