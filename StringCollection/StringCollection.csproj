@@ -6,7 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include="StringLockCollection.cs" />
+    <None Include="Collections\StringLockCollection.cs" />
   </ItemGroup>
 
 </Project>

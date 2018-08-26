@@ -41,11 +41,10 @@ namespace StringCollection
 
         public void Reset()
         {
-            //TryLock(Thread.CurrentThread.ManagedThreadId, () =>
-            //{
-            //    _stringList.Clear();
-            //});
-            _stringList.Clear();
+            TryLock(Thread.CurrentThread.ManagedThreadId, () =>
+            {
+                _stringList.Clear();
+            });
         }
 
         public override string ToString()
@@ -56,11 +55,9 @@ namespace StringCollection
             {
                 foreach (string s in _stringList)
                     result += s + ",";
-
-                result = result.Substring(0, result.Length > 1 ? result.Length - 1 : result.Length);
             });
 
-            return result;
+            return result.Substring(0, result.Length > 1 ? result.Length - 1 : result.Length);
         }
 
         private void TryLock(int lockingThreadId, Action actionToPerform)
@@ -78,12 +75,7 @@ namespace StringCollection
             }
             finally
             {
-                SpinWait.SpinUntil(() =>
-                {
-                    Interlocked.CompareExchange(ref _isLocked, NotLocked, lockingThreadId);
-
-                    return _isLocked == NotLocked;
-                });
+                _isLocked = NotLocked;
             }
         }
     }

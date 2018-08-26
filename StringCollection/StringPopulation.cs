@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -14,9 +15,7 @@ namespace StringCollection
         CancellationTokenSource _stringReadTokenSource = new CancellationTokenSource();
 
         private string _executionName = "No Execution";
-        private int _executionIteration = 0;
-        DateTime _startTime = DateTime.MinValue;
-        DateTime _endTime = DateTime.MinValue;
+        private Stopwatch _stopWatch = new Stopwatch();
 
         Task _statusUpdateTask = null;
 
@@ -26,56 +25,58 @@ namespace StringCollection
 
             _statusUpdateTask = new Task(() =>
             {
-                while (true)
+                while (!_stringReadTokenSource.Token.IsCancellationRequested)
                 {
                     Console.Clear();
-                    Console.WriteLine($"{ _executionName }: { _executionIteration} Statistics ({ DateTime.Now })");
+                    Console.WriteLine($"{ _executionName } Statistics ({ DateTime.Now })");
                     Console.WriteLine($"  { _stringCollection?.NumberOfWords } of { _wordsToPopulate.Length } words added");
                     Console.WriteLine($"  Words: { _stringCollection.ToString() }");
-                    Console.WriteLine($"  Execution Time: { (_endTime - _startTime).TotalMilliseconds }");
-                    Thread.Sleep(1000);
+                    Thread.Sleep(500);
                 }
-            }, _stringReadTokenSource.Token);
+            });
         }
 
-        public void StartProgressMonitor()
+        public void Initialize()
         {
             _statusUpdateTask.Start();
         }
 
-        public ExecutionStatistics Start(string executionName, int executionIteration, IStringCollection stringCollection, bool withArtificialDelay)
+        public List<ExecutionStatistics> Start<TStringCollection>(string executionName, int numberOfExecutionIterations)
+            where TStringCollection : IStringCollection, new()
         {
-            _stringCollection = stringCollection;
+            _stringCollection = new TStringCollection();
             _executionName = executionName;
-            _executionIteration = executionIteration;
 
-            _startTime = DateTime.Now;
-            ParallelLoopResult loopResult = Parallel.ForEach(_wordsToPopulate, (word) =>
+            List<ExecutionStatistics> executionStatistics = new List<ExecutionStatistics>();
+
+            for (int executionIteration = 0; executionIteration < numberOfExecutionIterations; executionIteration++)
             {
-                _stringCollection.AddString(word);
+                _stopWatch.Start();
+                ParallelLoopResult loopResult = Parallel.ForEach(_wordsToPopulate, (word) =>
+                {
+                    _stringCollection.AddString(word);
+                });
+                _stopWatch.Stop();
 
-                if (withArtificialDelay)
-                    Thread.Sleep(100);
-            });
-            _endTime = DateTime.Now;
+                SpinWait.SpinUntil(() => loopResult.IsCompleted);
 
-            SpinWait.SpinUntil(() => loopResult.IsCompleted);
+                executionStatistics.Add(new ExecutionStatistics()
+                {
+                    ExecutionTime = _stopWatch.Elapsed,
+                    Success = _wordsToPopulate.Length == _stringCollection.NumberOfWords
+                });
 
-            return new ExecutionStatistics()
-            {
-                ExecutionTime = _endTime - _startTime,
-                Success = _wordsToPopulate.Length == _stringCollection.NumberOfWords
-            };
+                _stringCollection.Reset();
+                _stopWatch.Reset();
+            }
+
+            return executionStatistics;
         }
 
-        public void StopProgressMonitor()
+        public void Terminate()
         {
             _stringReadTokenSource.Cancel();
-        }
-
-        public void Reset()
-        {
-            _stringCollection.Reset();
+            SpinWait.SpinUntil(() => _statusUpdateTask.IsCompleted);
         }
     }
 }

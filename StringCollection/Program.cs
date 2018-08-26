@@ -19,38 +19,29 @@ namespace StringCollection
     {
         static void Main(string[] args)
         {
-            bool withArtificialDelay = false;
             int numberOfIterations = 100000;
 
             if (args.Length > 0)
             {
-                withArtificialDelay = args[0] == "1";
+                int tempIterations = 0;
+
+                if (int.TryParse(args[0], out tempIterations))
+                    numberOfIterations = tempIterations;
             }
 
             string[] words = Constants.WordData.Split(' ');
 
             StringPopulation stringPopulation = new StringPopulation(words);
-            StringLockCollection lockStrings = new StringLockCollection();
-            StringCollection nonBlockingStrings = new StringCollection();
 
             List<ExecutionStatistics> lockStringsSuccess = new List<ExecutionStatistics>();
             List<ExecutionStatistics> nonBlockingStringsSuccess = new List<ExecutionStatistics>();
 
-            stringPopulation.StartProgressMonitor();
+            stringPopulation.Initialize();
 
-            for (int lockCycleIndex = 0; lockCycleIndex < numberOfIterations; lockCycleIndex++)
-            {
-                lockStringsSuccess.Add(stringPopulation.Start("Lock", lockCycleIndex, lockStrings, withArtificialDelay));
-                lockStrings.Reset();
-            }
+            lockStringsSuccess = stringPopulation.Start<StringLockCollection>("Lock", numberOfIterations);
+            nonBlockingStringsSuccess = stringPopulation.Start<StringCollection>("NonBlocking", numberOfIterations);
 
-            for (int lockCycleIndex = 0; lockCycleIndex < numberOfIterations; lockCycleIndex++)
-            {
-                nonBlockingStringsSuccess.Add(stringPopulation.Start("NonBlocking", lockCycleIndex, nonBlockingStrings, withArtificialDelay));
-                nonBlockingStrings.Reset();
-            }
-
-            stringPopulation.StopProgressMonitor();
+            stringPopulation.Terminate();
 
             Console.Clear();
             Console.WriteLine("*** Lock Statistics ***");
