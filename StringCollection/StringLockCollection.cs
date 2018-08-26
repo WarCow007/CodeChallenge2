@@ -18,13 +18,30 @@ namespace StringCollection
         {
         }
 
-        public int NumberOfWords { get { return _stringList.Count; } }
+        public int NumberOfWords
+        {
+            get
+            {
+                lock(_stringList)
+                {
+                    return _stringList.Count;
+                }
+            }
+        }
 
         public void AddString(string s)
         {
 			lock(_stringList)
             {
                 _stringList.Add(s);
+            }
+        }
+
+        public void Reset()
+        {
+            lock(_stringList)
+            {
+                _stringList.Clear();
             }
         }
 

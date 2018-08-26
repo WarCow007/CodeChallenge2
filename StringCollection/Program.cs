@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Linq;
 
 /// <summary>
 /// This code implements a parallel task to monitors changes to the collection, while a parallel
@@ -19,31 +20,46 @@ namespace StringCollection
         static void Main(string[] args)
         {
             bool withArtificialDelay = false;
+            int numberOfIterations = 100000;
 
             if (args.Length > 0)
             {
                 withArtificialDelay = args[0] == "1";
             }
 
-            string sentence =
-                "The mass and composition of the cent changed to the current copper plated zinc core in 1982. Both types were minted in 1982 with no distinguishing mark. " +
-                "Cents minted in 1943 were struck on planchets punched from zinc coated steel which left the resulting edges uncoated. This caused many of these coins to " +
-                "rust. These 'steel pennies' are not likely to be found in circulation today, as they were later intentionally removed from circulation for recycling the metal. " +
-                "However, cents minted from 1944 to 1946 were made from a special salvaged WWII brass composition to replace the steel cents, but still save material for the war " +
-                "effort, and are more common in circulation than their 1943 counterparts. The wheat cent was mainstream and common during its time. Some dates are rare, but many " +
-                "can still be found in circulation.This is partially due to the fact that unlike the formerly silver denominations(dollar, half, quarter, dime), the composition of " +
-                "the pre - 1982 cent, nearly pure copper, is not so much more valuable over face value for it to be hoarded to the extreme extent of the silver denominations. ";
+            string[] words = Constants.WordData.Split(' ');
 
-            string[] words = sentence.Split(' ');
+            StringPopulation stringPopulation = new StringPopulation(words);
+            StringLockCollection lockStrings = new StringLockCollection();
+            StringCollection nonBlockingStrings = new StringCollection();
 
-            StringPopulation<StringCollection> strings = new StringPopulation<StringCollection>(words);
-            strings.Start("NonBlocking", withArtificialDelay);
+            List<ExecutionStatistics> lockStringsSuccess = new List<ExecutionStatistics>();
+            List<ExecutionStatistics> nonBlockingStringsSuccess = new List<ExecutionStatistics>();
 
-            StringPopulation<StringLockCollection> strings2 = new StringPopulation<StringLockCollection>(words);
-            strings2.Start("Lock", withArtificialDelay);
+            stringPopulation.StartProgressMonitor();
 
-            //StringPopulation<StringNoLockCollection> strings3 = new StringPopulation<StringNoLockCollection>(words);
-            //strings3.Start("NotThreadSafe");
+            for (int lockCycleIndex = 0; lockCycleIndex < numberOfIterations; lockCycleIndex++)
+            {
+                lockStringsSuccess.Add(stringPopulation.Start("Lock", lockCycleIndex, lockStrings, withArtificialDelay));
+                lockStrings.Reset();
+            }
+
+            for (int lockCycleIndex = 0; lockCycleIndex < numberOfIterations; lockCycleIndex++)
+            {
+                nonBlockingStringsSuccess.Add(stringPopulation.Start("NonBlocking", lockCycleIndex, nonBlockingStrings, withArtificialDelay));
+                nonBlockingStrings.Reset();
+            }
+
+            stringPopulation.StopProgressMonitor();
+
+            Console.Clear();
+            Console.WriteLine("*** Lock Statistics ***");
+            Console.WriteLine($" Words: { lockStringsSuccess.FindAll(e => e.Success).Count } of { lockStringsSuccess.Count } added");
+            Console.WriteLine($" Time (avg): { lockStringsSuccess.Average(e => e.ExecutionTime.Milliseconds) }");
+            Console.WriteLine("*** Non Blocking Statistics ***");
+            Console.WriteLine($" Words: { nonBlockingStringsSuccess.FindAll(e => e.Success).Count } of { nonBlockingStringsSuccess.Count } * **");
+            Console.WriteLine($" Time (avg): { nonBlockingStringsSuccess.Average(e => e.ExecutionTime.Milliseconds) }");
+            Console.ReadLine();
         }
     }
 }

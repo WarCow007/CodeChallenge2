@@ -8,6 +8,7 @@ namespace StringCollection
     {
         int NumberOfWords { get; }
         void AddString(string s);
+        void Reset();
         string ToString();
     }
 }

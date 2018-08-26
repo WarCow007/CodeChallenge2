@@ -23,16 +23,29 @@ namespace StringCollection
         {
         }
 
-        public int NumberOfWords { get { return _stringList.Count; } }
+        public int NumberOfWords
+        {
+            get
+            {
+                return _stringList.Count;
+            }
+        }
 
         public void AddString(string s)
         {
             TryLock(Thread.CurrentThread.ManagedThreadId, () =>
             {
-                Thread.MemoryBarrier();
                 _stringList.Add(s);
-                Thread.MemoryBarrier();
             });
+        }
+
+        public void Reset()
+        {
+            //TryLock(Thread.CurrentThread.ManagedThreadId, () =>
+            //{
+            //    _stringList.Clear();
+            //});
+            _stringList.Clear();
         }
 
         public override string ToString()
@@ -41,43 +54,36 @@ namespace StringCollection
 
             TryLock(Thread.CurrentThread.ManagedThreadId, () =>
             {
-                Thread.MemoryBarrier();
                 foreach (string s in _stringList)
                     result += s + ",";
-                Thread.MemoryBarrier();
+
+                result = result.Substring(0, result.Length > 1 ? result.Length - 1 : result.Length);
             });
 
-            return result.Substring(0, result.Length > 1 ? result.Length - 1 : result.Length);
+            return result;
         }
 
         private void TryLock(int lockingThreadId, Action actionToPerform)
         {
-            int originalLockState = NotLocked;
-
             try
             {
-                Interlocked.Exchange(ref originalLockState, _isLocked);
-
                 SpinWait.SpinUntil(() =>
                 {
-                    originalLockState = Interlocked.CompareExchange(ref _isLocked, lockingThreadId, NotLocked);
+                    Interlocked.CompareExchange(ref _isLocked, lockingThreadId, NotLocked);
 
-                    return originalLockState != _isLocked;
+                    return _isLocked == lockingThreadId;
                 });
 
                 actionToPerform();
             }
             finally
             {
-                Interlocked.Exchange(ref originalLockState, _isLocked);
-
                 SpinWait.SpinUntil(() =>
                 {
-                    originalLockState = Interlocked.CompareExchange(ref _isLocked, NotLocked, lockingThreadId);
+                    Interlocked.CompareExchange(ref _isLocked, NotLocked, lockingThreadId);
 
-                    return originalLockState != _isLocked;
+                    return _isLocked == NotLocked;
                 });
-
             }
         }
     }

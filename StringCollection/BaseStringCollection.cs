@@ -10,11 +10,11 @@ namespace StringCollection
     /// read write operations. This avoids the latency when waking up threads in the situation
     /// where we use a lock.
     /// </summary>
-    public class StringNoLockCollection : IStringCollection
+    public abstract class BaseStringCollection : IStringCollection
     {
         private List<string> _stringList = new List<string>();
 
-        public StringNoLockCollection()
+        public BaseStringCollection()
         {
         }
 
@@ -23,6 +23,11 @@ namespace StringCollection
         public void AddString(string s)
         {
             _stringList.Add(s);
+        }
+
+        public void Reset()
+        {
+            _stringList.Clear();
         }
 
         public override string ToString()

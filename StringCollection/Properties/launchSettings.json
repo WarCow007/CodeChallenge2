@@ -1,8 +1,7 @@
 {
   "profiles": {
     "StringCollection": {
-      "commandName": "Project",
-      "commandLineArgs": "1"
+      "commandName": "Project"
     }
   }
 }
