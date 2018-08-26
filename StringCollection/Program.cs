@@ -45,10 +45,13 @@ namespace StringCollection
 
             Console.Clear();
             Console.WriteLine("*** Lock Statistics ***");
-            Console.WriteLine($" Words: { lockStringsSuccess.FindAll(e => e.Success).Count } of { lockStringsSuccess.Count } added");
+            Console.WriteLine($" Words Added: { lockStringsSuccess.Sum(e => e.PopulatedWordCount) } of { lockStringsSuccess.Sum(e => e.WordCount) }");
+            Console.WriteLine($" Iteration Success: { lockStringsSuccess.FindAll(e => e.Success).Count } of { lockStringsSuccess.Count }");
             Console.WriteLine($" Time (avg): { lockStringsSuccess.Average(e => e.ExecutionTime.Milliseconds) }");
+            Console.WriteLine("");
             Console.WriteLine("*** Non Blocking Statistics ***");
-            Console.WriteLine($" Words: { nonBlockingStringsSuccess.FindAll(e => e.Success).Count } of { nonBlockingStringsSuccess.Count } * **");
+            Console.WriteLine($" Words Added: { nonBlockingStringsSuccess.Sum(e => e.PopulatedWordCount) } of { nonBlockingStringsSuccess.Sum(e => e.WordCount) }");
+            Console.WriteLine($" Iteration Success: { nonBlockingStringsSuccess.FindAll(e => e.Success).Count } of { nonBlockingStringsSuccess.Count }");
             Console.WriteLine($" Time (avg): { nonBlockingStringsSuccess.Average(e => e.ExecutionTime.Milliseconds) }");
             Console.ReadLine();
         }

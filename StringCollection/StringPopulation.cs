@@ -62,8 +62,9 @@ namespace StringCollection
 
                 executionStatistics.Add(new ExecutionStatistics()
                 {
+                    WordCount = _wordsToPopulate.Length,
+                    PopulatedWordCount = _stringCollection.NumberOfWords,
                     ExecutionTime = _stopWatch.Elapsed,
-                    Success = _wordsToPopulate.Length == _stringCollection.NumberOfWords
                 });
 
                 _stringCollection.Reset();
